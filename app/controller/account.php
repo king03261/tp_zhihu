@@ -6,6 +6,9 @@ use app\BaseController;
 use think\facade\Db;
 use think\facade\Session;
 use think\facade\Validate;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mime\Email;
 
 class Account extends BaseController
 {
@@ -103,5 +106,27 @@ class Account extends BaseController
     function logout() {
         Session::delete('user');
         return redirect("/account/login");
+    }
+
+    function send_mail() {
+        $code = rand(100000,999999);
+        Db::table("codes")->save([
+            "content" => $code,
+            "created_at" => time(),
+        ]);
+        // https://github.com/symfony/mailer
+        $input = request()->param();
+        //smtp://user:pass@smtp.example.com:25
+        $transport = Transport::fromDsn('smtp://18864755374:QHBBGMZGKHWOMNED@smtp.163.com:25');
+        $mailer = new Mailer($transport);
+
+        $email = (new Email())
+            ->from('18864755374@163.com')
+            ->to($input["email"])
+            ->subject('TP知乎网')
+            ->text("你的邮箱验证码是 {$code}, 打死都不能告诉别人,十分钟有效。");
+            // ->html('<p>See Twig integration for better HTML integration!</p>');
+        $mailer->send($email);
+        return redirect("/account/register");
     }
 }
