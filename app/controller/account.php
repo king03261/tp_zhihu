@@ -117,11 +117,11 @@ class Account extends BaseController
         // https://github.com/symfony/mailer
         $input = request()->param();
         //smtp://user:pass@smtp.example.com:25
-        $transport = Transport::fromDsn('smtp://18864755374:QHBBGMZGKHWOMNED@smtp.163.com:25');
+        $transport = Transport::fromDsn('smtp://:@smtp.163.com:25');
         $mailer = new Mailer($transport);
 
         $email = (new Email())
-            ->from('18864755374@163.com')
+            ->from('@163.com')
             ->to($input["email"])
             ->subject('TP知乎网')
             ->text("你的邮箱验证码是 {$code}, 打死都不能告诉别人,十分钟有效。");
