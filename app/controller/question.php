@@ -30,18 +30,6 @@ class Question extends BaseController
         $question = Db::table("questions")
         ->join('users','questions.user_id = users.id')
         ->where("questions.id",$id)->find();
-
-        // id" => 2
-        // "question_id" => 2
-        // "user_id" => 2
-        // "content" => "上能去金融搬砖，下能去烟草干活，实在不行当个体育老师凑合一下。2024年堪称是体育生元年，拼搏百天，我也要当体育生重振辉煌！"
-        // "pv" => 0
-        // "created_at" => 1722582018
-        // "email" => "111@qq.com"
-        // "password" => "74522afe4fc91f35665218af8b6eab56"
-        // "nickname" => "陈老师"
-
-
         $answers = Db::table("answers")
             ->field('`answers`.id AS id,question_id,user_id,content,`answers`.created_at,email,password,nickname,`users`.id AS uid')
             ->join('users','answers.user_id = users.id')
@@ -56,7 +44,7 @@ class Question extends BaseController
             $answer_likes[$answer["id"]] = 0;
         }
         $all_answer_likes = Db::table("answer_likes")->where("answer_id","IN", $answerIds)->select();
-        
+
         foreach($all_answer_likes as $all_answer_like) {
             $answer_likes[$all_answer_like["answer_id"]] += 1;
         }

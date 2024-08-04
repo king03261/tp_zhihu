@@ -3,12 +3,14 @@
 namespace app\controller;
 
 use app\BaseController;
+use Exception;
 use think\facade\Db;
 use think\facade\Session;
 use think\facade\Validate;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mime\Email;
+use think\facade\Config;
 
 class Account extends BaseController
 {
@@ -53,6 +55,7 @@ class Account extends BaseController
     function register() {
         return view("",[
             "error" => Session::get("error"),
+            "info" => Session::get("info"),
         ]);
     }
 
@@ -61,6 +64,7 @@ class Account extends BaseController
         $validate = Validate::rule([
             'nickname'  => 'require|min:3|max:10',
             'email' => 'require|email',
+            'code' => 'require|number',
             'password' => 'require|min:6|max:20',
         ])->rule([
             "repassword" => function($value) use ($input) {
@@ -78,6 +82,7 @@ class Account extends BaseController
             'password.max' => '密码最多不能超过 20 个字符',
             'repassword.' => '两次密码输入不一致',
         ]);
+
         if (!$validate->check($input)) {
             $err = $validate->getError();
             if ($err == "") {
@@ -87,10 +92,18 @@ class Account extends BaseController
             return redirect("/account/register");
         }
 
+        $code = Db::table("codes")->where("content",$input["code"])
+            ->where('created_at', '>=', time() - 10 * 60)->find();
+        if (is_null($code)) {
+            Session::flash('error', "验证码错误");
+            return redirect("/account/register");
+        }
+
         if (!is_null(Db::table("users")->where("email", $input["email"])->find())) {
             Session::flash('error', "邮箱已注册");
             return redirect("/account/register");
         }
+        unset($input["code"]);
         unset($input["repassword"]);
         $input["created_at"] = time();
         $input["password"] = md5($input["password"] . "123");
@@ -109,24 +122,58 @@ class Account extends BaseController
     }
 
     function send_mail() {
+        $input = request()->param();
+        $validate = Validate::rule([
+            'email' => 'require|email',
+            'return' => 'require',
+        ]);
+
+        if (!$validate->check($input)) {
+            $err = $validate->getError();
+            Session::flash('error', $err);
+            return redirect($input["return"]);
+        }
+
         $code = rand(100000,999999);
         Db::table("codes")->save([
             "content" => $code,
             "created_at" => time(),
         ]);
-        // https://github.com/symfony/mailer
-        $input = request()->param();
-        //smtp://user:pass@smtp.example.com:25
-        $transport = Transport::fromDsn('smtp://:@smtp.163.com:25');
-        $mailer = new Mailer($transport);
+        $email_account = Config::get('app.email_account');
+        $email_dsn = Config::get('app.email_dsn');
 
-        $email = (new Email())
-            ->from('@163.com')
-            ->to($input["email"])
-            ->subject('TP知乎网')
-            ->text("你的邮箱验证码是 {$code}, 打死都不能告诉别人,十分钟有效。");
-            // ->html('<p>See Twig integration for better HTML integration!</p>');
-        $mailer->send($email);
-        return redirect("/account/register");
+        if ($email_account == "" || $email_dsn == "") {
+            Session::flash('error', "系统暂不支持邮箱发送");
+            return redirect($input["return"]);
+        }
+        try {
+            //// https://github.com/symfony/mailer
+            //smtp://user:pass@smtp.example.com:25
+            $mailer = new Mailer(Transport::fromDsn($email_dsn));
+            $email = (new Email())
+                ->from($email_account)
+                ->to($input["email"])
+                ->subject('TP知乎网')
+                ->text("你的邮箱验证码是 {$code}, 打死都不能告诉别人,十分钟有效。");
+            $mailer->send($email);
+        } catch(Exception $e) {
+            // return $e->getMessage();
+            Session::flash('error', "邮箱发送失败，请稍后重试");
+            return redirect($input["return"]);
+        }
+        Session::flash('info', "发送成功，请到邮箱查询验证码");
+        return redirect($input["return"]);
+        
+    }
+
+    function reset_password() {
+        return view("",[
+            "info" => Session::get("info"),
+            "error" => Session::get("error"),
+        ]);
+    }
+
+    function reset_password_post() {
+        
     }
 }

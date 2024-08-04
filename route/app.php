@@ -36,5 +36,6 @@ Route::post('/account/register', 'account/register_post');
 
 Route::get('/account/send-mail','account/send_mail');
 
+Route::get('/account/reset', 'account/reset_password');
 
 Route::get('/account/logout', 'account/logout')->middleware(\app\middleware\Auth::class);
